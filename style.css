@@ -21,6 +21,18 @@
     padding: 0;
 }
 
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 body {
     font-family: Ubuntu;
     background: var(--Blue200);
@@ -570,6 +582,31 @@ body {
     transform: scale(.97);
 }
 
+.btn-confirm.loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+}
+
+.btn-confirm.loading::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    top: 50%;
+    left: 50%;
+    margin-top: -9px;
+    margin-left: -9px;
+    border: 2px solid var(--White);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* Animations */
 @keyframes fadeSlideIn {
     from {
@@ -666,3 +703,70 @@ body {
         padding: 16px 0 0;
     }
 }
+
+/* Theme Toggle */
+.theme-toggle {
+    position: absolute;
+    bottom: 32px;
+    left: 32px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: background 0.3s;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
+@media (max-width: 680px) {
+    .theme-toggle {
+        top: 24px;
+        right: 24px;
+        left: auto;
+        bottom: auto;
+    }
+}
+
+/* Dark Mode */
+[data-theme="dark"] body { background: hsl(230, 25%, 10%); }
+[data-theme="dark"] .card { background: hsl(230, 20%, 15%); }
+[data-theme="dark"] .main { background: hsl(230, 20%, 15%); }
+[data-theme="dark"] .step-title,
+[data-theme="dark"] .plan-name,
+[data-theme="dark"] .addon-name,
+[data-theme="dark"] .thankyou-title,
+[data-theme="dark"] .field-label,
+[data-theme="dark"] .summary-plan-name,
+[data-theme="dark"] .summary-plan-price,
+[data-theme="dark"] .summary-total-label,
+[data-theme="dark"] .summary-addon-price { color: hsl(0,0%,100%); }
+
+[data-theme="dark"] .field-input { background: transparent; color: white; border-color: hsl(230,20%,30%); }
+[data-theme="dark"] .field-input:focus { border-color: var(--Purple600); }
+[data-theme="dark"] .plan-card,
+[data-theme="dark"] .addon-item { border-color: hsl(230,20%,30%); }
+[data-theme="dark"] .plan-card:hover,
+[data-theme="dark"] .addon-item:hover { background: hsl(230,20%,20%); }
+[data-theme="dark"] .plan-card.selected,
+[data-theme="dark"] .addon-item.checked { background: hsl(230,20%,22%); border-color: var(--Purple600); }
+[data-theme="dark"] .billing-toggle { background: hsl(230,20%,22%); }
+[data-theme="dark"] .billing-toggle span.active { color: white; }
+[data-theme="dark"] .toggle-track { background: white; }
+[data-theme="dark"] .toggle-thumb { background: hsl(230,20%,15%); }
+[data-theme="dark"] .summary-box { background: hsl(230,20%,20%); }
+[data-theme="dark"] .summary-plan-row { border-bottom-color: hsl(230,20%,30%); }
+[data-theme="dark"] .addon-checkbox { border-color: hsl(230,20%,40%); }
+[data-theme="dark"] .addon-item.checked .addon-checkbox { border-color: var(--Purple600); }

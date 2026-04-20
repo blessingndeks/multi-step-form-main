@@ -6,8 +6,23 @@ const state = {
   isYearly: false,
   selectedPlan: 'arcade',
   // add-ons keyed by id
-  addons: { online: true, storage: true, profile: false }
+  addons: { online: true, storage: true, profile: false },
+  personalInfo: { name: '', email: '', phone: '' }
 };
+
+function saveState() {
+  localStorage.setItem('multiStepFormState', JSON.stringify(state));
+}
+
+function loadState() {
+  const saved = localStorage.getItem('multiStepFormState');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    Object.assign(state, parsed);
+    // ensure personalInfo exists if old state
+    if (!state.personalInfo) state.personalInfo = { name: '', email: '', phone: '' };
+  }
+}
 
 /* Plan data */
 const plans = {
@@ -24,10 +39,18 @@ const addonData = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════
-   DOM HELPERS
+   DOM HELPERS & A11Y
 ═══════════════════════════════════════════════════════════════════ */
 const $ = id => document.getElementById(id);
 const qs = sel => document.querySelector(sel);
+
+function announce(msg) {
+  const announcer = $('a11y-announcer');
+  if (announcer) {
+    announcer.textContent = '';
+    setTimeout(() => { announcer.textContent = msg; }, 50);
+  }
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    STEP NAVIGATION
@@ -37,13 +60,32 @@ function goTo(step) {
   document.querySelectorAll('.step-panel, .thankyou-panel').forEach(p => p.classList.remove('visible'));
 
   if (step === 'thankyou') {
-    $('thankyou').classList.add('visible');
+    const ty = $('thankyou');
+    ty.classList.add('visible');
+    const title = ty.querySelector('.thankyou-title');
+    if (title) {
+      title.setAttribute('tabindex', '-1');
+      title.focus();
+    }
+    announce('Step complete. Thank you.');
+    // Trigger confetti
+    if (window.confetti) {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    }
     // Update sidebar – all complete
     document.querySelectorAll('.step-item').forEach(li => li.classList.remove('active'));
   } else {
-    $(`step${step}`).classList.add('visible');
+    const panel = $(`step${step}`);
+    panel.classList.add('visible');
+    const title = panel.querySelector('.step-title');
+    if (title) {
+      title.setAttribute('tabindex', '-1');
+      title.focus();
+    }
+    announce(`Step ${step} of 4: ${title ? title.textContent : ''}`);
     state.currentStep = step;
     updateSidebar(step);
+    saveState();
   }
 }
 
@@ -81,6 +123,11 @@ function validateStep1() {
     showError('phone', 'This field is required'); valid = false;
   } else clearError('phone');
 
+  if (valid) {
+    state.personalInfo = { name, email, phone };
+    saveState();
+  }
+
   return valid;
 }
 
@@ -89,6 +136,7 @@ function showError(field, msg) {
   const errEl = $(`${field}-error`);
   errEl.textContent = msg;
   errEl.classList.add('visible');
+  announce(`Error in ${field}: ${msg}`);
 }
 function clearError(field) {
   $(`${field}`).classList.remove('error');
@@ -97,7 +145,11 @@ function clearError(field) {
 
 /* Live validation: clear error on input */
 ['name', 'email', 'phone'].forEach(f => {
-  $(f).addEventListener('input', () => clearError(f));
+  $(f).addEventListener('input', () => {
+    clearError(f);
+    state.personalInfo[f] = $(f).value;
+    saveState();
+  });
 });
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -117,6 +169,7 @@ function selectPlan(plan) {
     c.classList.toggle('selected', active);
     c.setAttribute('aria-checked', active);
   });
+  saveState();
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -132,6 +185,7 @@ function setYearly(yearly) {
   $('label-yearly').classList.toggle('active', yearly);
   updatePlanPrices();
   updateAddonPrices();
+  saveState();
 }
 
 function updatePlanPrices() {
@@ -172,6 +226,7 @@ function toggleAddon(item) {
   state.addons[key] = !state.addons[key];
   item.classList.toggle('checked', state.addons[key]);
   item.setAttribute('aria-checked', state.addons[key]);
+  saveState();
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -232,7 +287,16 @@ $('next3').addEventListener('click', () => goTo(4));
 $('back4').addEventListener('click', () => goTo(3));
 $('confirm').addEventListener('click', () => {
   buildSummary(); // final sanity pass
-  goTo('thankyou');
+  const btn = $('confirm');
+  btn.classList.add('loading');
+  
+  // Simulate network request
+  setTimeout(() => {
+    btn.classList.remove('loading');
+    goTo('thankyou');
+    // Clear saved state on success
+    localStorage.removeItem('multiStepFormState');
+  }, 2000);
 });
 
 /* Build summary whenever step 4 is entered */
@@ -256,8 +320,71 @@ window._goTo = function(step) {
 ['next3'].forEach(id => $(id).addEventListener('click', buildSummary));
 
 /* ═══════════════════════════════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════════════════════════════ */
+const themeToggle = $('themeToggle');
+const iconMoon = qs('.icon-moon');
+const iconSun = qs('.icon-sun');
+
+function setTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    iconMoon.style.display = 'none';
+    iconSun.style.display = 'block';
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+    iconMoon.style.display = 'block';
+    iconSun.style.display = 'none';
+  }
+  localStorage.setItem('multiStepFormTheme', theme);
+}
+
+themeToggle.addEventListener('click', () => {
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
+
+function loadTheme() {
+  const savedTheme = localStorage.getItem('multiStepFormTheme');
+  if (savedTheme) {
+    setTheme(savedTheme);
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    setTheme('dark');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════════ */
+loadTheme();
+loadState();
+
+// Pre-fill inputs
+$('name').value = state.personalInfo.name || '';
+$('email').value = state.personalInfo.email || '';
+$('phone').value = state.personalInfo.phone || '';
+
+// Restore selection visual states based on loaded state
+document.querySelectorAll('.plan-card').forEach(c => {
+  const active = c.dataset.plan === state.selectedPlan;
+  c.classList.toggle('selected', active);
+  c.setAttribute('aria-checked', active);
+});
+
+billingToggle.classList.toggle('yearly', state.isYearly);
+billingToggle.setAttribute('aria-checked', state.isYearly);
+$('label-monthly').classList.toggle('active', !state.isYearly);
+$('label-yearly').classList.toggle('active', state.isYearly);
+
+document.querySelectorAll('.addon-item').forEach(item => {
+  const key = item.dataset.addon;
+  item.classList.toggle('checked', state.addons[key]);
+  item.setAttribute('aria-checked', state.addons[key]);
+});
+
 updatePlanPrices();
 updateAddonPrices();
-goTo(1);
+
+// Ensure we don't start on thankyou step unless valid
+const startStep = (state.currentStep === 'thankyou') ? 1 : state.currentStep;
+goTo(startStep);
